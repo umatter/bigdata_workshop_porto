@@ -1,0 +1,401 @@
+---
+title: "Big Data Analytics:"
+subtitle: "A guide to economists making the transition to Big Data"
+author: Ulrich Matter (University of St.Gallen)
+format:
+     beamer: 
+          aspectratio: 169
+          theme: metropolis
+          institute: Workshop on empirical research with large datasets | Porto 19-20 DEC. 2022
+          fontsize: "Large"
+editor: visual
+---
+
+# Background/Introduction
+
+## Background: big data, where to begin?
+
+!['A person analyzing a large amount of data' by DALL-E 2](../img/cover.jpg "'A person analyzing a large amount of data' by DALL-E 2"){height="45%," width="45%"}
+
+## The data analysts'/economists' struggle (some examples)
+
+**Example 1: Overheard at a seminar.**
+
+Q:
+
+> Why do you use a sample of ten million? Uhm, I mean... apart from the fact that you can?
+
+A:
+
+> The treatment is expected to have rather small effects, we need the power!
+
+## The data analysts' and economists' struggle (some examples)
+
+**Example 2: water cooler chat during PhD times**
+
+Colleague:
+
+> We were running this fixed effects model and it took ages to compute
+
+Me:
+
+> Is it a memory issue?
+
+Colleague:
+
+> Ugh.. I don't know. We have just let it run for 3.5 days...
+
+## The data analysts' and economists' struggle (some examples)
+
+**Example 3: exchange with co-author**
+
+Co-author:
+
+> The bin-plot takes ages to compute and is huge in the compiled paper.
+
+## Meanwhile on the engineering/software side of big data:
+
+![The Machine Learning, AI, and Data (MAD) Landscape, 2021. By Matt Turck (@mattturck), John Wu (@john_d_wu) & FirstMark (@firstmarkcap)](../img/mad_landscape.pdf "'The Machine Learning, AI, and Data (MAD) Landscape, 2021. By Matt Turck (@mattturck), John Wu (@john_d_wu) & FirstMark (@firstmarkcap)"){height="85%," width="85%"}
+
+## Personal perspective on Big Data Analytics
+
+-   *Focus during PhD/Postdoc-time* in the context of political economics and media economics.
+-   Conceptualization and teaching of *Big Data Analytics course* at the University of St.Gallen (graduate level).
+-   Book project *Big Data Analytics: A guide to data science practitioners making the transition to Big Data* (CRC Press, Data Science Series): [umatter.github.io/BigData](https://umatter.github.io/BigData/)
+
+# This Talk
+
+## Agenda
+
+1.  Background/Introduction
+2.  Approaches to Big Data
+3.  Platform: Software/Hardware
+4.  Application: Some Examples
+5.  Wrap-up
+
+# Approaches to Big Data
+
+## Approaches: overview
+
+![Domains of and approaches to Big Data Analytics.](../img/I_approaches.png){height="65%," width="65%"}
+
+## The guide
+
+The mantra: focus on transferable skills/knowledge (big data is a moving target).
+
+1.  Consider a statistics/econometrics solution.
+
+2.  Focus on few versatile high-level tools: here, R + SQL.
+
+3.  Recognize bottle-necks regarding the computational resources.
+
+4.  Use the cloud, but only if really necessary.
+
+# Platform
+
+## Software and hardware layers
+
+![Software and hardware layers in Big Data Analytics.](../img/II_computing_environment.png){height="80%," width="80%"}
+
+## Find bottlenecks in your R code
+
+**Tools to find bottlenecks in your big data analytics code: memory.**
+
+```{r echo=TRUE}
+# packages
+library(pryr) # memory profiling
+
+# Example: how does a line of code affect memory
+# initiate a vector with 1000 (pseudo)-random numbers
+mem_change(thousand_numbers <- runif(1000))
+# initiate a vector with 1M (pseudo)-random numbers
+mem_change(a_million_numbers <- runif(1000^2))
+
+```
+
+## Find bottlenecks in your R code
+
+**Tools to find bottlenecks in your big data analytics code: computing time.**
+
+```{r echo=TRUE, eval=FALSE}
+# packages
+library(bench) # computing time profiling
+
+# Example: compare speed of alternative implementations
+mark(
+     # apply-approach to compute square roots
+     sqrts1 <- sapply(thousand_numbers, sqrt),
+     # exploit vectorization to compute square roots
+     sqrts2 <- sqrt(thousand_numbers)
+)[,c(1,4)]
+
+```
+
+## Find bottlenecks in your R code
+
+```{r }
+# packages
+library(bench) # computing time profiling
+
+# Example: compare speed of alternative implementations
+mark(
+     # apply-approach to compute square roots
+     sqrts1 <- sapply(thousand_numbers, sqrt),
+     # exploit vectorization to compute square roots
+     sqrts2 <- sqrt(thousand_numbers)
+)[,c(1,4,5)]
+
+```
+
+**(Aside: use R's native vectorization whenever possible.)**
+
+## Bottlenecks in applied econometrics
+
+-   Data preparation: raw data is *larger than RAM*.
+-   Regression analysis: large model matrix, $(\mathbf{X}^\intercal\mathbf{X})^{-1}$ -- *a lot to compute (+ large objects)*
+-   Bootstrapping: *CPU at the limit?*
+-   Visualization: large scatter-plots: *too large vector images*.
+
+## Why does R/RStudio crash or slow down?
+
+![RStudio crash pop-up.](../img/rstudio_crash.jpeg){width="65%"}
+
+## Why does R/RStudio crash or slow down?
+
+![Illustration of virtual memory.](../img/virtual_memory.png){width="45%"}
+
+## Hardware: use (virtual) memory the smart way
+
+*Out-of-memory* approaches:
+
+-   Datasets are written in a easily-readable/writable structure to a dedicated part of the HD.
+-   The R session is connected to the dataset, but only contains the dataset's metadata (and connection information) in RAM.
+-   Robust to very large datasets, but processing is slower (reading from/writing to HD is slower than RAM).
+
+Solutions for R: `ff`, `bigmemory`, Apache Spark (via `sparklyr` or `SparkR`).
+
+## Smart use of HD, and RAM -- SQL + R
+
+*Exploit database ideas for simple analytics, learn SQL!*
+
+-   Robust solutions to filter and prepare larger-than-memory datasets (e.g., `SQLite`).
+-   Specialized big data software solutions provide an SQL(-like) interface (Apache Spark, Apache Druid, AWS Athena, Google BigQuery, etc.)
+-   (No need to learn relational algebra, etc.)
+
+## Aside: row-based vs. column-based DBs
+
+![Illustration of row-based vs. column-based databases.](../img/column_v_rowbased.png){height="65%," width="65%"}
+
+Column-based solutions: **Apache Druid, Google BigQuery, Amazon Redshift**.
+
+## Smart use of HD, and RAM -- lazy evaluation
+
+-   Import metadata (enough to know what is in the dataset).
+-   Write analytics/data preparation scripts as if the dataset would be loaded into R.
+-   The data is only loaded into RAM *after evaluation* of all the analytics/data prep commands.
+
+![Apache Arrow logo. © 2016-2022 The Apache Software Foundation](../img/apache_arrow.png){height="40%," width="40%"}
+
+# Application
+
+## Data pipeline
+
+![Data pipeline illustration.](../img/data_pipeline.png){width="80%"}
+
+## Example 1: loading/filtering data -- SQL + R
+
+```{r echo=TRUE}
+# load packages
+library(RSQLite)
+# download example file 
+URL <- 
+"https://files.consumerfinance.gov/f/documents/NFWBS_PUF_2016_data.csv"
+PATH <- paste0(getwd(), "/", basename(URL))
+download.file(URL, PATH)
+
+# initiate a database
+con <- dbConnect(SQLite(), "mydb.sqlite")
+# load data into the db
+RSQLite::dbWriteTable(con, "fwb", PATH, overwrite=TRUE)
+
+```
+
+## Example 1: loading/filtering data -- SQL + R
+
+```{r echo=TRUE}
+
+# select/filter for analysis
+query <-
+"
+SELECT 
+PUF_ID AS id,
+FWBscore AS financial_wellbeing,
+SWB_1 AS subjective_wellbeing
+FROM fwb
+"
+adf <- dbGetQuery(con, query)
+
+```
+
+## Example 1: loading/filtering data -- SQL + R
+
+```{r echo=TRUE}
+# inspect result
+head(adf, 2)
+
+```
+
+## Example 2: data aggregation with `arrow`
+
+```{r echo=TRUE}
+# data
+# download the example data (3.4GB!) from here:
+# https://bda-examples.s3.eu-central-1.amazonaws.com/tlc_trips.csv
+
+# load packages
+library(arrow)
+library(dplyr)
+library(pryr) # for profiling
+
+# read the csv file 
+mem_change( taxi <-  read_csv_arrow("../data/tlc_trips.csv", 
+                       as_data_frame = FALSE))
+```
+
+## Example 2: Data aggregation with `arrow`
+
+```{r echo=TRUE}
+taxi
+```
+
+## Example 2: Data Aggregation with `arrow`
+
+```{r echo=TRUE}
+# clean the categorical variable, aggregate by group
+taxi <- 
+   taxi %>% 
+   mutate(Payment_Type = tolower(Payment_Type))
+```
+
+## Example 2: data aggregation with `arrow`
+
+```{r echo=TRUE}
+time_prof <- bench::mark(
+taxi_summary <- taxi %>%
+   mutate(percent_tip = (Tip_Amt/Total_Amt)*100 ) %>% 
+   group_by(Payment_Type) %>% 
+   summarize(avg_percent_tip = mean(percent_tip)) %>% 
+   collect()
+)
+
+```
+
+## Example 2: data aggregation with `arrow`
+
+```{r echo=TRUE }
+time_prof$median
+time_prof$`itr/sec`
+```
+
+The summary stats (by group) of 27,472,535 rows were computed in well below one second (!).
+
+## Example 2: data aggregation with `arrow`
+
+```{r echo=TRUE}
+taxi_summary
+```
+
+## Example 3: visualization via rasterization
+
+```{r echo=TRUE}
+# load packages
+library(ggplot2)
+library(data.table) # fast reading of csv
+library(scattermore) # for rasterization
+# load data
+taxi_dt <- fread("../data/tlc_trips.csv",
+              nrows = 1000000)
+
+```
+
+## Example 3: visualization via rasterization
+
+```{r echo=TRUE, out.width="50%"}
+# plot
+ggplot(taxi_dt, aes(y=Tip_Amt, x= Fare_Amt)) +
+          geom_scattermore(pointsize = 3, color="steelblue", alpha=0.5)
+
+```
+
+## Example 4: regression analysis with spark
+
+```{r echo=TRUE, eval=FALSE}
+# install the R-package
+install.packages("sparklyr")
+# local Spark installation
+sparklyr::spark_install()
+```
+
+(this can take a while)
+
+## Example 4: regression analysis with spark
+
+```{r echo=TRUE, eval=FALSE}
+# load packages
+library(sparklyr)
+# connect with default configuration
+sc <- spark_connect(master="local")
+# load data
+taxi_spark  <- copy_to(sc, taxi_dt)
+```
+
+## Example 4: regression analysis with spark
+
+```{r echo=TRUE, eval=FALSE}
+# reg model specification
+model <- Tip_Amt ~ Fare_Amt + Passenger_Count
+# fit the model
+mem_change(fit1_spark <- ml_linear_regression(taxi_spark, model))
+# compute summary stats
+summary(fit1_spark)
+```
+
+## Example 4: regression analysis with spark
+
+    Deviance Residuals (approximate):
+         Min       1Q   Median       3Q      Max 
+    -9.53120 -0.43811 -0.25108 -0.09631 90.72312 
+
+    Coefficients:
+        (Intercept)        Fare_Amt Passenger_Count 
+       -0.135939484     0.064490020    -0.006364645 
+
+    R-Squared: 0.127
+    Root Mean Squared Error: 1.218
+
+# Wrapping up
+
+## Takeaways (a suggestion)
+
+1.  Don't dismiss statistics solutions: why not just take a random sample?
+2.  Know your R (memory allocation!) and SQL (way more than RDBMS).
+3.  Recognize the bottlenecks regarding computing resources: RAM? CPU? HD?
+4.  Exploit local options before turning to the cloud.
+5.  Invest in transferable big data skills/knowledge.
+6.  Consider Apache Spark (`sparklyr`), Apache Arrow (`arrow`), and Apache Druid.
+
+## Promising developments
+
+What to keep an eye on? (some suggestions)
+
+-   `dplyr`-interfaces
+-   SQL-like interfaces to data warehouses, data lakes, semi-structured data
+-   Cloud: serverless data analytics solutions
+
+## Resources/follow up
+
+- **Taxi trips data used in examples: [https://bda-examples.s3.eu-central-1.amazonaws.com/tlc_trips.csv](https://bda-examples.s3.eu-central-1.amazonaws.com/tlc_trips.csv)**
+-   **Quarto-file of this slide deck (incl. all code examples): [github.com/umatter/bigdata_workshop_porto](https://github.com/umatter/bigdata_workshop_porto)**
+-   **Detailed explanations, corresponding tutorials: [umatter.github.io/BigData](https://umatter.github.io/BigData)**
+
+# Thanks! Questions?
